@@ -38,22 +38,33 @@ app.get('/api/products', async (req, res) => {
     }
 });
 
-// Fuzzy search by category_name
+// Fuzzy search by category_name and optional color
 app.post('/api/search', async (req, res) => {
     try {
-        const { category_name } = req.body; // Extract category_name from JSON payload
+        const { category_name, color } = req.body; // Extract category_name and color from JSON payload
 
         if (!category_name) {
             return res.status(400).json({ message: 'category_name is required' });
         }
 
+        // Build the query dynamically based on the presence of color
+        const query = {
+            category_name: { 
+                $regex: category_name, 
+                $options: 'i' // Case-insensitive search
+            }
+        };
+
+        // Add color to the query if provided and not an empty string
+        if (color && color.trim() !== '') {
+            query.color = { 
+                $regex: color, 
+                $options: 'i' // Case-insensitive search
+            };
+        }
+
         const products = await db.collection('products')
-            .find({
-                category_name: { 
-                    $regex: category_name, 
-                    $options: 'i' // Case-insensitive search
-                }
-            }, {
+            .find(query, {
                 projection: {
                     title: 1,
                     description: 1,
@@ -74,6 +85,7 @@ app.post('/api/search', async (req, res) => {
         res.status(500).json({ message: 'Error searching products', error });
     }
 });
+
 
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
